@@ -409,3 +409,7 @@ table.tabla{width:100%;border-collapse:collapse;font-size:13.5px;min-width:760px
 .entreno li{align-items:flex-start}
 .series{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
 .entreno li .series span{font-size:12px;background:var(--arena);border-radius:5px;padding:2px 7px;color:var(--pizarra)}
+
+/* ---------- Avisos a socios ---------- */
+.tabla .col-aviso{white-space:nowrap}
+.tabla .avisado{display:block;font-size:11px;color:var(--gris);margin-top:4px}

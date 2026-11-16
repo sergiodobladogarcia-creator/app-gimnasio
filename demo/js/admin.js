@@ -57,11 +57,11 @@
       if (A.fEstado === 'inactivos' ? !inactivo(s) : A.fEstado === 'activo' ? s.estado !== 'activo' : A.fEstado !== 'todos' && e !== A.fEstado) return false;
       return !q || s.nombre.toLowerCase().includes(q) || s.email.includes(q) || s.codigo.toLowerCase().includes(q);
     }).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
-    if (!lista.length) return '<tr><td colspan="6"><p class="vacio">Ningún socio coincide con la búsqueda.</p></td></tr>';
+    if (!lista.length) return '<tr><td colspan="7"><p class="vacio">Ningún socio coincide con la búsqueda.</p></td></tr>';
     return lista.map(s => {
       const e = D.estado(s), deu = D.deuda(s);
       return `<tr class="clic" data-a="ficha" data-id="${s.id}" tabindex="0"><td><div class="quien">${avatar(s, 34)}<div>${esc(s.nombre)}<small>${esc(s.email)}</small></div></div></td>
-        <td>${esc(D.plan(s.planId).nombre)}</td><td><span class="pill ${e.c}">${e.t}</span>${deu.length ? ` <span class="pill ${deu.some(p => p.estado === 'fallido') ? 'bad' : 'warn'}">Debe ${D.eur(deu.reduce((t, p) => t + p.total, 0))}</span>` : ''}</td>
+        ${window.Avisos.celda(s)}<td>${esc(D.plan(s.planId).nombre)}</td><td><span class="pill ${e.c}">${e.t}</span>${deu.length ? ` <span class="pill ${deu.some(p => p.estado === 'fallido') ? 'bad' : 'warn'}">Debe ${D.eur(deu.reduce((t, p) => t + p.total, 0))}</span>` : ''}</td>
         <td>${haceDias(s.ultimoAcceso)}</td><td>${s.proxCobro ? D.fecha(s.proxCobro, { day: 'numeric', month: 'short' }) : s.sesionesRest !== null ? s.sesionesRest + ' sesiones' : '—'}</td><td>${D.METODOS[s.metodo]}</td></tr>`;
     }).join('');
   }
@@ -69,7 +69,7 @@
     return cab('Socios', `${D.db.socios.length} fichas · ${D.db.socios.filter(s => s.estado === 'activo').length} activos`, `<button class="btn" data-a="nuevoSocio">${ic('plus')} Nuevo socio</button>`) +
       `<div class="herr"><input class="inp" type="search" placeholder="Buscar por nombre, correo o código" value="${esc(A.q)}" data-in="buscar" aria-label="Buscar socio">
         <div class="chips">${F_SOCIOS.map(([k, t]) => `<button class="chip ${A.fEstado === k ? 'on' : ''}" data-a="filtro" data-k="fEstado" data-v="${k}">${t}</button>`).join('')}</div></div>
-      <div class="tabla-w"><table class="tabla"><thead><tr><th>Socio</th><th>Cuota</th><th>Estado</th><th>Último acceso</th><th>Próximo cobro</th><th>Pago</th></tr></thead><tbody id="tb-socios">${filasSocios()}</tbody></table></div>`;
+      <div class="tabla-w"><table class="tabla"><thead><tr><th>Socio</th><th>Aviso</th><th>Cuota</th><th>Estado</th><th>Último acceso</th><th>Próximo cobro</th><th>Pago</th></tr></thead><tbody id="tb-socios">${filasSocios()}</tbody></table></div>`;
   }
   function ficha(id) {
     const s = D.socio(id), e = D.estado(s), plan = D.plan(s.planId), pagos = D.db.pagos.filter(p => p.socioId === s.id).reverse().slice(0, 5), deu = D.deuda(s);
@@ -85,6 +85,7 @@
         <label class="campo"><input class="inp" name="lesiones" value="${esc(s.lesiones)}" placeholder="Lesiones o limitaciones (p. ej. hernia lumbar)" aria-label="Lesiones"></label>
         <textarea class="inp" name="notas" placeholder="Cargas habituales, observaciones, seguimiento…" aria-label="Notas privadas">${esc(s.notas)}</textarea>
         <div class="acciones"><button class="btn mini">Guardar notas</button>
+          <button type="button" class="btn mini sec" data-a="aviso" data-id="${s.id}">${ic('chat')} Enviar mensaje</button>
           <button type="button" class="btn mini suave" data-a="cobroManual" data-id="${s.id}">${ic('euro')} Cobrar cuota en efectivo</button>
           ${s.estado === 'activo' ? `<button type="button" class="btn mini sec" data-a="estado" data-id="${s.id}" data-v="pausa">Pausar cuota</button>` : `<button type="button" class="btn mini sec" data-a="estado" data-id="${s.id}" data-v="activo">Reactivar</button>`}
           ${s.estado !== 'baja' ? `<button type="button" class="btn mini peligro" data-a="estado" data-id="${s.id}" data-v="baja">Dar de baja</button>` : ''}</div></form></div>`, 'ancha');

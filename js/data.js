@@ -174,6 +174,7 @@ D.sets = x => x.sets || Array.from({ length: x.s || 1 }, () => ({ r: x.r || 0, k
   D.guardarEntreno = o => D.hacer(sb.rpc('registrar_entreno', { p_titulo: o.titulo, p_tipo: o.tipo || 'Fuerza', p_nota: o.nota || '', p_ejercicios: o.ejercicios, p_publicar: !!o.publicar, p_rutina: o.rutinaId || null, p_guardar_rutina: !!o.guardarRutina }));
   D.guardarRutina = async r => !!(await D.hacer(sb.rpc('guardar_rutina', { p_id: r.id || null, p_nombre: r.nombre, p_ejercicios: r.ejercicios }), 'Rutina guardada'));
   D.borrarRutina = async id => !!(await D.hacer(sb.from('rutinas').delete().eq('id', id).eq('socio_id', D.db.yo), 'Rutina eliminada'));
+  D.marcarAviso = async (id, tipo) => !!(await D.hacer(sb.from('socios').update({ ultimo_aviso: D.iso(D.hoy()), aviso_tipo: tipo }).eq('id', id)));
   D.prs = id => D.db.entrenos.filter(e => e.socioId === id && e.prs && e.prs.length).length;
 
   D.logros = s => {

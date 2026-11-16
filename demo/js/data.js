@@ -260,6 +260,7 @@ D.sets = x => x.sets || Array.from({ length: x.s || 1 }, () => ({ r: x.r || 0, k
     D.save(); window.UI.render(); window.UI.toast('Rutina eliminada');
     return true;
   };
+  D.marcarAviso = async (id, tipo) => { Object.assign(D.socio(id), { ultimoAviso: D.iso(D.hoy()), avisoTipo: tipo }); D.save(); window.UI.render(); return true; };
   D.prs = id => D.db.entrenos.filter(e => e.socioId === id && e.prs && e.prs.length).length;
 
   D.logros = s => {
