@@ -86,7 +86,9 @@
         <div class="acciones"><button class="btn mini">Guardar notas</button>
           <button type="button" class="btn mini suave" data-a="cobroManual" data-id="${s.id}">${ic('euro')} Cobrar cuota</button>
           ${s.estado === 'activo' ? `<button type="button" class="btn mini sec" data-a="estado" data-id="${s.id}" data-v="pausa">Pausar cuota</button>` : s.estado !== 'pendiente' ? `<button type="button" class="btn mini sec" data-a="estado" data-id="${s.id}" data-v="activo">Reactivar</button>` : ''}
-          ${s.estado !== 'baja' ? `<button type="button" class="btn mini peligro" data-a="estado" data-id="${s.id}" data-v="baja">Dar de baja</button>` : ''}</div></form></div>`, 'ancha');
+          ${s.estado !== 'baja' ? `<button type="button" class="btn mini peligro" data-a="estado" data-id="${s.id}" data-v="baja">Dar de baja</button>` : ''}
+          ${s.userId && s.id !== D.db.yo ? `<button type="button" class="btn mini sec" data-a="rol" data-id="${s.id}" data-v="${s.esAdmin ? '' : '1'}">${s.esAdmin ? 'Quitar acceso al panel' : 'Dar acceso al panel'}</button>` : ''}</div>
+        ${s.esAdmin ? '<p class="aviso">Esta cuenta es de administrador: puede abrir el panel del gimnasio.</p>' : !s.userId ? '<p class="aviso">Este socio aún no se ha registrado en la app con su correo.</p>' : ''}</form></div>`, 'ancha');
   }
 
   /* ---------- Facturación ---------- */
@@ -178,6 +180,11 @@
     estado(d, el) {
       el.disabled = true;
       yFicha(sb.from('socios').update({ estado: d.v }).eq('id', +d.id), d.v === 'activo' ? 'Socio reactivado' : d.v === 'pausa' ? 'Cuota en pausa' : 'Socio dado de baja', d.id);
+    },
+    rol(d, el) {
+      if (d.v && !el.dataset.seguro) { el.dataset.seguro = '1'; el.textContent = 'Pulsa otra vez: verá socios y facturación'; return; }
+      el.disabled = true;
+      yFicha(sb.from('socios').update({ es_admin: !!d.v }).eq('id', +d.id), d.v ? 'Ya puede abrir el panel del gimnasio' : 'Acceso al panel retirado', d.id);
     },
     cobroManual(d) {
       const s = D.socio(d.id);
