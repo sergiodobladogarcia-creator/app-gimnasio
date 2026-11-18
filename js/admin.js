@@ -3,7 +3,7 @@
   'use strict';
   const C = window.GYM_CONFIG, D = window.D, U = window.UI, esc = U.esc, ic = U.ic, avatar = U.avatar;
   const A = { fEstado: 'todos', q: '', fPago: 'todos', mes: D.mesKey(D.hoy()), lector: null };
-  const TABS = [['resumen', 'Resumen', 'grid'], ['socios', 'Socios', 'users'], ['facturacion', 'Facturación', 'euro'], ['clases', 'Clases y horarios', 'calendar'], ['cuotas', 'Cuotas', 'tag'], ['acceso', 'Control de acceso', 'door'], ['comunidad', 'Comunidad y premios', 'gift']];
+  const TABS = [['resumen', 'Resumen', 'grid'], ['socios', 'Socios', 'users'], ['facturacion', 'Facturación', 'euro'], ['clases', 'Clases y horarios', 'calendar'], ['cuotas', 'Cuotas', 'tag'], ['acceso', 'Control de acceso', 'door'], ['aforo', 'Aforo', 'gauge'], ['comunidad', 'Comunidad y premios', 'gift']];
   const esHoy = ts => D.iso(new Date(ts)) === D.iso(D.hoy());
   const deudas = () => D.db.pagos.filter(p => p.estado === 'pendiente' || p.estado === 'fallido');
   const inactivo = s => s.estado === 'activo' && D.diasDesde(s.ultimoAcceso || s.alta) > 10;
@@ -134,11 +134,11 @@
   function acceso() {
     const L = A.lector, s = L && D.socio(L.socioId), hoy = D.db.accesos.filter(a => esHoy(a.ts));
     return cab('Control de acceso', 'El socio enseña su QR en la entrada y el lector comprueba la cuota al instante') +
-      `<div class="acceso"><div class="panel"><h3>Lector de la entrada</h3>
-        <form data-form="leer"><label class="campo"><span>Código leído (un lector USB lo escribe aquí solo)</span><input class="inp" name="codigo" placeholder="GYM-0001-…" autocomplete="off"></label>
+      `<div class="acceso"><div class="panel"><h3>Lector del torno</h3>
+        <form data-form="leer">${window.Aforo.selector()}<label class="campo"><span>Código leído (un lector USB lo escribe aquí solo)</span><input class="inp" name="codigo" placeholder="GYM-0001-…" autocomplete="off"></label>
           <label class="campo"><span>O simula que llega un socio</span><select class="inp" name="socio"><option value="">Elegir socio…</option>${[...D.db.socios].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')).map(x => `<option value="${x.id}">${esc(x.nombre)} — ${D.estado(x).t}</option>`).join('')}</select></label>
           <button class="btn ancho">${ic('qr')} Leer código</button></form>
-        ${L ? `<div class="lector ${L.ok ? 'ok' : 'bad'}" role="status">${avatar(s, 64)}<h2>${L.ok ? 'ACCESO PERMITIDO' : 'ACCESO DENEGADO'}</h2><p><b>${esc(s.nombre)}</b> · ${esc(D.plan(s.planId).nombre)}</p><p>${esc(L.motivo)}${L.puntos ? ` · +${L.puntos} puntos` : ''}</p></div>`
+        ${L ? `<div class="lector ${L.salida ? 'salida' : L.ok ? 'ok' : 'bad'}" role="status">${avatar(s, 64)}<h2>${L.salida ? 'SALIDA REGISTRADA' : L.ok ? 'ACCESO PERMITIDO' : 'ACCESO DENEGADO'}</h2><p><b>${esc(s.nombre)}</b> · ${esc(D.plan(s.planId).nombre)}</p><p>${esc(L.motivo)}${L.puntos ? ` · +${L.puntos} puntos` : ''}</p></div>`
         : `<div class="lector espera" role="status">${ic('qr')}<p style="margin-top:8px">Esperando un código…</p></div>`}</div>
       <div class="panel"><h3>Entradas de hoy <small>${hoy.filter(a => a.ok).length} accesos</small></h3>${hoy.map(a => { const x = D.socio(a.socioId); return `<div class="reg">${avatar(x, 32)}<strong>${esc(x.nombre)}</strong><span class="pill ${a.ok ? 'ok' : 'bad'}">${a.ok ? 'Entrada' : 'Denegado'}</span><span>${U.hora(a.ts)}</span></div>`; }).join('') || '<p class="vacio">Todavía no ha entrado nadie hoy.</p>'}</div></div>`;
   }
@@ -156,7 +156,7 @@
         <p class="aviso">Los puntos los suma el servidor: 10 por la primera entrada del día y 20 por entreno registrado (máximo dos al día).</p></div></div>`;
   }
 
-  const VISTAS = { resumen, socios, facturacion, clases, cuotas, acceso, comunidad };
+  const VISTAS = { resumen, socios, facturacion, clases, cuotas, acceso, aforo: () => window.Aforo.panel(), comunidad };
   window.Admin = {
     render(tab) {
       const t = VISTAS[tab] ? tab : 'resumen', nDeu = deudas().length, nCan = D.db.canjes.filter(c => !c.entregado).length;
@@ -265,8 +265,8 @@
     async leer(f) {
       if (!f.codigo.trim() && !f.socio) return U.toast('Escribe un código o elige un socio', 'bad');
       A.lector = null;
-      const r = await D.hacer(sb.rpc('registrar_acceso', { p_codigo: f.codigo.trim(), p_socio: f.socio ? +f.socio : null }));
-      if (r) { A.lector = { socioId: r.socio_id, ok: r.ok, motivo: r.motivo, puntos: r.puntos }; U.render(); }
+      const r = await D.hacer(sb.rpc('registrar_acceso', { p_codigo: f.codigo.trim(), p_socio: f.socio ? +f.socio : null, p_sentido: f.sentido || 'entrada' }));
+      if (r) { A.lector = { socioId: r.socio_id, ok: r.ok, motivo: r.motivo, puntos: r.puntos, salida: r.sentido === 'salida' }; U.render(); }
     }
   });
 })();

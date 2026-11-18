@@ -13,6 +13,10 @@ window.GYM_CONFIG = {
   iva: 21,               // % de IVA incluido en los precios
   objetivoSemanal: 4,    // entrenos por semana que se proponen al socio
 
+  // Horario de apertura (lunes … domingo): [hora de apertura, hora de cierre]; null = cerrado.
+  // Se usa para el aforo en directo y para decir a los socios cuándo abre.
+  apertura: [[7, 22], [7, 22], [7, 22], [7, 22], [7, 22], [9, 14], null],
+
   // Conexión con la base de datos. Esta clave es pública por diseño:
   // lo que protege los datos son las reglas de seguridad del servidor.
   supabase: {

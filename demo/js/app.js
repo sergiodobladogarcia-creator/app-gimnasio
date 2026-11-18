@@ -27,7 +27,8 @@
     alert: 'M12 4l9 16H3zM12 10v4M12 17v.01',
     arrow: 'M5 12h14M13 6l6 6-6 6',
     card: 'M3 6h18v12H3zM3 10h18M7 15h3',
-    file: 'M6 3h8l4 4v14H6zM14 3v4h4M9 13h6M9 17h6'
+    file: 'M6 3h8l4 4v14H6zM14 3v4h4M9 13h6M9 17h6',
+    gauge: 'M3.5 17a8.5 8.5 0 1 1 17 0M12 17l4-5M12 17h.01'
   };
 
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

@@ -38,6 +38,7 @@
       <div class="pass-info"><small>Pase de acceso</small><strong>${esc(plan.nombre)}</strong><span class="pill ${acc.ok ? 'ok' : 'bad'}">${esc(acc.motivo)}</span><em>${esc(vigencia(s))}</em></div>
       <div class="pass-qr">${U.qrSvg(s.codigo)}<span>Toca para ampliar</span></div>
     </button>
+    ${window.Aforo.tarjeta()}
     <section class="blq"><div class="sec-h"><h3>Tu próxima clase</h3><a href="#/socio/clases">Ver horario</a></div>
       ${nx ? `<div class="card next"><div class="next-f"><b>${D.parse(nx.r.fecha).getDate()}</b><span>${D.fecha(nx.r.fecha, { weekday: 'short' }).replace('.', '')}</span></div>
         <div class="next-i"><strong>${esc(D.disc(nx.c.disc).nombre)} · ${nx.c.hora}</strong><span>${esc(nx.c.monitor)} · ${esc(nx.c.sala)} · ${nx.c.dur} min</span></div>

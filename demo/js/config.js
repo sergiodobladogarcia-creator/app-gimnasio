@@ -14,6 +14,10 @@ window.GYM_CONFIG = {
   serieFactura: 'F',     // prefijo del número de factura
   objetivoSemanal: 4,    // entrenos por semana que se proponen al socio
 
+  // Horario de apertura (lunes … domingo): [hora de apertura, hora de cierre]; null = cerrado.
+  // Se usa para el aforo en directo y para decir a los socios cuándo abre.
+  apertura: [[7, 22], [7, 22], [7, 22], [7, 22], [7, 22], [9, 14], null],
+
   // Cuotas. "meses" = cada cuánto se renueva (0 = no se renueva sola).
   planes: [
     { id: 'mensual', nombre: 'Mensual', precio: 35, periodo: 'al mes', meses: 1, destacado: true,

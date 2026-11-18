@@ -413,3 +413,34 @@ table.tabla{width:100%;border-collapse:collapse;font-size:13.5px;min-width:760px
 /* ---------- Avisos a socios ---------- */
 .tabla .col-aviso{white-space:nowrap}
 .tabla .avisado{display:block;font-size:11px;color:var(--gris);margin-top:4px}
+
+/* ---------- Aforo en directo ---------- */
+:root{--af-bar:rgba(255,255,255,.16)}
+body.claro{--af-bar:#D3D7DE}
+.af-live{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--terra-tx);text-transform:uppercase;letter-spacing:.1em}
+.af-live i{width:8px;height:8px;border-radius:50%;background:var(--terra);animation:latido 1.8s infinite}
+.af-live.off{color:var(--gris)} .af-live.off i{background:var(--gris);animation:none}
+@keyframes latido{0%{box-shadow:0 0 0 0 rgba(225,29,46,.55)}70%{box-shadow:0 0 0 8px rgba(225,29,46,0)}100%{box-shadow:0 0 0 0 rgba(225,29,46,0)}}
+.aforo .af-main{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.af-num b{display:block;font-family:var(--serif);font-size:58px;font-weight:700;line-height:.9;text-transform:uppercase;font-variant-numeric:tabular-nums}
+.af-num span{display:block;font-size:13px;color:var(--gris);margin-top:6px}
+.af-barra{margin:16px 0 8px}
+.af-barra.ok>i{background:var(--ok)} .af-barra.warn>i{background:var(--warn)} .af-barra.bad>i{background:var(--bad)}
+.af-cap{display:flex;justify-content:space-between;gap:4px 10px;font-size:12px;color:var(--gris);flex-wrap:wrap}
+.af-g{display:grid;gap:3px;align-items:end;height:72px;margin-top:18px}
+.af-g>i{display:block;height:4%;background:var(--af-bar);border-radius:3px 3px 1px 1px}
+.af-g>i.ahora{background:var(--terra)}
+.af-x{display:grid;gap:3px;margin-top:6px;font-size:10.5px;color:var(--gris)}
+.af-x span{white-space:nowrap;overflow:visible}
+.af-ley{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:11.5px;color:var(--gris);margin-top:10px}
+.af-ley span{display:inline-flex;align-items:center;gap:6px}
+.af-ley .cuadro{width:10px;height:10px;border-radius:3px;background:var(--af-bar);display:inline-block}
+.af-ley .cuadro.ahora{background:var(--terra)} .af-ley .cuadro.hoy{background:var(--pizarra)}
+.af-tip{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;margin-top:14px;padding-top:12px;border-top:1px solid var(--linea)}
+.af-tip .ic{width:17px;height:17px;color:var(--terra-tx);margin-top:1px}
+.af-g.doble{height:180px;gap:6px}
+.af-col{display:flex;gap:2px;align-items:flex-end;height:100%}
+.af-col i{flex:1;display:block;border-radius:3px 3px 1px 1px;background:var(--af-bar)}
+.af-col i.hoy{background:var(--pizarra)} .af-col i.hoy.ahora{background:var(--terra)}
+.lector.salida{background:#0F1115}
+.kpi .pill{text-transform:none;letter-spacing:0;font-size:12px}

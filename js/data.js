@@ -64,7 +64,7 @@
   D.cargar = async () => {
     const yo = camel(await q(sb.rpc('mi_socio')));
     const hoy = D.hoy(), admin = yo.esAdmin, mes1 = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-    const [planes, clases, recompensas, reservas, pagos, entrenos, canjes, muro, ranking, ocup, socios, accesos, nEnt] = await Promise.all([
+    const [planes, clases, recompensas, reservas, pagos, entrenos, canjes, muro, ranking, ocup, socios, accesos, nEnt, aforo] = await Promise.all([
       q(sb.from('planes').select('*').order('orden')),
       q(sb.from('clases').select('*')),
       q(sb.from('recompensas').select('*').eq('activa', true).order('coste')),
@@ -76,14 +76,15 @@
       q(sb.rpc('ocupacion', { p_desde: D.iso(hoy), p_hasta: D.iso(D.addDays(hoy, 7)) })),
       admin ? q(sb.from('socios').select('*').order('nombre')) : [],
       admin ? q(sb.from('accesos').select('*').gte('ts', mes1.toISOString()).order('ts', { ascending: false })) : [],
-      admin ? q(sb.from('entrenos').select('socio_id')) : []
+      admin ? q(sb.from('entrenos').select('socio_id')) : [],
+      q(sb.rpc('aforo'))
     ]);
     const ms = l => camel(l).map(x => Object.assign(x, { ts: Date.parse(x.ts) }));
     const db = {
       yo: yo.id, admin, planes: camel(planes), clases: camel(clases), reservas: camel(reservas),
       pagos: camel(pagos).map(p => Object.assign(p, { n: p.numero, total: +p.total })),
       entrenos: camel(entrenos), canjes: ms(canjes), posts: ms(muro), ranking: camel(ranking),
-      accesos: ms(accesos), socios: admin ? camel(socios) : [yo], ocup: {}, nombres: {}, nEnt: {}
+      accesos: ms(accesos).filter(a => a.sentido !== 'salida'), salidas: ms(accesos).filter(a => a.sentido === 'salida'), socios: admin ? camel(socios) : [yo], ocup: {}, nombres: {}, nEnt: {}
     };
     db.planes.forEach(p => { p.precio = +p.precio; });
     ocup.forEach(o => { db.ocup[o.clase_id + '|' + o.fecha] = o.n; });
@@ -97,6 +98,7 @@
     if (admin) Object.assign(db.socios.find(s => s.id === yo.id) || {}, { esAdmin: true });
     db.rutinas = camel(await q(sb.from('rutinas').select('*').eq('socio_id', yo.id).order('id')));
     C.recompensas = camel(recompensas);
+    D.af = D.leeAforo(aforo);
     D.db = db;
   };
 
@@ -175,6 +177,28 @@ D.sets = x => x.sets || Array.from({ length: x.s || 1 }, () => ({ r: x.r || 0, k
   D.guardarRutina = async r => !!(await D.hacer(sb.rpc('guardar_rutina', { p_id: r.id || null, p_nombre: r.nombre, p_ejercicios: r.ejercicios }), 'Rutina guardada'));
   D.borrarRutina = async id => !!(await D.hacer(sb.from('rutinas').delete().eq('id', id).eq('socio_id', D.db.yo), 'Rutina eliminada'));
   D.marcarAviso = async (id, tipo) => !!(await D.hacer(sb.from('socios').update({ ultimo_aviso: D.iso(D.hoy()), aviso_tipo: tipo }).eq('id', id)));
+  D.dentroEn = (t, est) => {
+    const ult = {}, desde = t - est * 36e5;
+    const ver = (lista, sale) => (lista || []).forEach(a => {
+      if ((sale || a.ok) && a.ts <= t && a.ts > desde) { const u = ult[a.socioId]; if (!u || a.ts > u.ts || (a.ts === u.ts && sale)) ult[a.socioId] = { ts: a.ts, sale }; }
+    });
+    ver(D.db.accesos, false); ver(D.db.salidas, true);
+    return Object.keys(ult).filter(id => !ult[id].sale).map(id => ({ socioId: +id, desde: ult[id].ts }));
+  };
+  D.leeAforo = a => a && { dentro: a.dentro, max: a.max, estancia: +a.estancia, hoy: a.hoy || [], tipico: a.tipico || null, ts: Date.parse(a.ts) || Date.now() };
+  // Vuelve a pedir el aforo (y, para el gimnasio, las entradas y salidas de hoy)
+  D.leerAforo = async () => {
+    const [a, hoy] = await Promise.all([q(sb.rpc('aforo')), D.db.admin ? q(sb.from('accesos').select('*').gte('ts', D.hoy().toISOString()).order('ts', { ascending: false })) : null]);
+    if (hoy) {
+      const ini = D.hoy().getTime(), l = camel(hoy).map(x => Object.assign(x, { ts: Date.parse(x.ts) }));
+      D.db.accesos = l.filter(x => x.sentido !== 'salida').concat(D.db.accesos.filter(x => x.ts < ini));
+      D.db.salidas = l.filter(x => x.sentido === 'salida').concat(D.db.salidas.filter(x => x.ts < ini));
+    }
+    D.af = D.leeAforo(a);
+    return D.af;
+  };
+  D.marcarSalida = id => D.hacer(sb.rpc('registrar_acceso', { p_codigo: null, p_socio: id, p_sentido: 'salida' }), 'Salida registrada');
+  D.guardarAjustesAforo = async o => !!(await D.hacer(sb.from('ajustes').update({ aforo_max: o.max, estancia_horas: o.estancia }).eq('id', 1), 'Ajustes de aforo guardados'));
   D.prs = id => D.db.entrenos.filter(e => e.socioId === id && e.prs && e.prs.length).length;
 
   D.logros = s => {

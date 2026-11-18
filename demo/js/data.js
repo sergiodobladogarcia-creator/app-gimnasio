@@ -2,7 +2,7 @@
    En la versión real, este archivo se sustituye por la base de datos. */
 (function () {
   'use strict';
-  const C = window.GYM_CONFIG, KEY = 'gymapp_demo_v2', D = window.D = {};
+  const C = window.GYM_CONFIG, KEY = 'gymapp_demo_v3', D = window.D = {};
 
   /* ---------- Fechas y formato ---------- */
   D.hoy = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
@@ -103,18 +103,8 @@
     const clases = [];
     C.horario.forEach(h => h[0].forEach(dia => clases.push({ id: clases.length + 1, dia, hora: h[1], disc: h[2], dur: h[3], monitor: h[4], sala: h[5], aforo: h[6], nivel: h[7] })));
 
-    // Accesos de hoy
-    const activos = socios.filter(s => s.estado === 'activo' && s.id !== 1);
-    const abre = new Date(hoy).setHours(7, 0, 0, 0);
-    const horas = Math.max(0, Math.min(ahora, new Date(hoy).setHours(22, 0, 0, 0)) - abre) / 36e5;
-    const accesos = [];
-    for (let i = 0; i < Math.round(horas * 3) + (horas > 0 ? 2 : 0); i++) {
-      const s = pick(activos);
-      if (accesos.some(a => a.socioId === s.id)) continue;
-      accesos.push({ socioId: s.id, ts: abre + Math.floor(r() * horas * 36e5), ok: true });
-      s.ultimoAcceso = D.iso(hoy);
-    }
-    accesos.sort((a, b) => b.ts - a.ts);
+    // Entradas y salidas por el torno: las va generando D.simular() según la hora real
+    const accesos = [], salidas = [];
 
     // Entrenamientos del socio de la demo (con progresión real de cargas)
     const entrenos = [];
@@ -149,7 +139,7 @@
       { socioId: 9, ts: ahora - 75 * h, titulo: 'Ciclo + core', tipo: 'Cardio', texto: '45 minutos de ciclo y abdominales al terminar.', ejercicios: [{ n: 'Ciclo Indoor', s: 1, r: 45, kg: 0 }, { n: 'Plancha', s: 4, r: 60, kg: 0 }], likes: 7, comentarios: [] }
     ].map((p, i) => Object.assign({ id: i + 1, liked: false }, p));
 
-    const db = { v: 2, dia: D.iso(hoy), yo: 1, planes, socios, pagos, clases, reservas: [], accesos, entrenos, rutinas, posts, canjes: [], nFactura: pagos.length };
+    const db = { v: 3, dia: D.iso(hoy), yo: 1, planes, socios, pagos, clases, reservas: [], accesos, salidas, ajustes: { max: 25, estancia: 3 }, simHasta: D.hoy().getTime(), entrenos, rutinas, posts, canjes: [], nFactura: pagos.length };
 
     // Dos reservas ya hechas por el socio de la demo
     ['bodypump', 'yoga'].forEach(disc => {
@@ -163,11 +153,12 @@
 
   /* ---------- Guardado ---------- */
   D.save = () => { try { localStorage.setItem(KEY, JSON.stringify(D.db)); } catch (e) { /* sin almacenamiento: la demo sigue en memoria */ } };
-  D.reset = () => { D.db = seed(); D.save(); };
+  D.reset = () => { D.db = seed(); D.simular(); D.save(); };
   D.load = () => {
     try { D.db = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { D.db = null; }
     // La demo se regenera cada día para que las fechas, accesos y reservas sean siempre actuales.
-    if (!D.db || D.db.v !== 2 || D.db.dia !== D.iso(D.hoy())) D.reset();
+    if (!D.db || D.db.v !== 3 || D.db.dia !== D.iso(D.hoy())) D.reset();
+    else { D.simular(); D.save(); }
   };
 
   /* ---------- Consultas ---------- */
@@ -261,6 +252,59 @@ D.sets = x => x.sets || Array.from({ length: x.s || 1 }, () => ({ r: x.r || 0, k
     return true;
   };
   D.marcarAviso = async (id, tipo) => { Object.assign(D.socio(id), { ultimoAviso: D.iso(D.hoy()), avisoTipo: tipo }); D.save(); window.UI.render(); return true; };
+  D.dentroEn = (t, est) => {
+    const ult = {}, desde = t - est * 36e5;
+    const ver = (lista, sale) => (lista || []).forEach(a => {
+      if ((sale || a.ok) && a.ts <= t && a.ts > desde) { const u = ult[a.socioId]; if (!u || a.ts > u.ts || (a.ts === u.ts && sale)) ult[a.socioId] = { ts: a.ts, sale }; }
+    });
+    ver(D.db.accesos, false); ver(D.db.salidas, true);
+    return Object.keys(ult).filter(id => !ult[id].sale).map(id => ({ socioId: +id, desde: ult[id].ts }));
+  };
+  // Afluencia típica de la demo (entradas por hora): mañanas y tardes con pico a última hora, sábados por la mañana
+  const RITMO = { laborable: { 7: 3, 8: 4, 9: 3.5, 10: 2.5, 11: 2, 12: 2, 13: 1.5, 14: 1.5, 15: 2, 16: 3, 17: 5, 18: 7, 19: 7, 20: 5, 21: 2.5 }, sabado: { 9: 4, 10: 6, 11: 6, 12: 4, 13: 2 } };
+  const ritmo = (dia, h) => {
+    const a = (C.apertura || [])[dia];
+    if (!a || h < a[0] || h >= a[1]) return 0;
+    return (dia === 5 ? RITMO.sabado : dia === 6 ? {} : RITMO.laborable)[h] || 0;
+  };
+  // Simula el paso de socios por el torno desde la última vez hasta ahora, para que el aforo esté vivo durante la presentación
+  D.simular = () => {
+    const db = D.db, ahora = Date.now(), ini = D.hoy().getTime(), PASO = 3e5, hoyIso = D.iso(D.hoy());
+    if (!db.simHasta || db.simHasta < ini) db.simHasta = ini;
+    const habituales = db.socios.filter(s => s.estado === 'activo' && s.id !== db.yo && D.diasDesde(s.ultimoAcceso) <= 10);
+    for (let t = Math.ceil(db.simHasta / PASO) * PASO; t + PASO <= ahora; t += PASO) {
+      const d = new Date(t), esperadas = ritmo(D.diaSemana(d), d.getHours()) / 12;
+      if (!esperadas) continue;
+      const r = rng(Math.floor(t / PASO));
+      let n = Math.floor(esperadas) + (r() < esperadas % 1 ? 1 : 0);
+      while (n-- > 0) {
+        const ts = t + Math.floor(r() * PASO), dentro = new Set(D.dentroEn(ts, db.ajustes.estancia).map(x => x.socioId));
+        const yaHoy = new Set(db.accesos.filter(a => a.ts >= ini).map(a => a.socioId));
+        let pool = habituales.filter(s => !dentro.has(s.id) && !yaHoy.has(s.id));
+        if (!pool.length) pool = habituales.filter(s => !dentro.has(s.id));
+        if (!pool.length) break;
+        const s = pool[Math.floor(r() * pool.length)];
+        db.accesos.push({ socioId: s.id, ts, ok: true });
+        if (r() > 0.15) db.salidas.push({ socioId: s.id, ts: ts + (45 + Math.floor(r() * 60)) * 6e4 }); // algunos no pasan el QR al salir
+        if (s.ultimoAcceso !== hoyIso) { s.ultimoAcceso = hoyIso; s.visitas++; s.visitasMes++; }
+      }
+    }
+    db.simHasta = Math.max(db.simHasta, Math.floor(ahora / PASO) * PASO);
+    db.accesos.sort((a, b) => b.ts - a.ts);
+    D.af = D.calcAforo();
+  };
+  D.calcAforo = () => {
+    const db = D.db, est = db.ajustes.estancia, ahora = Date.now(), hoy = D.hoy(), dia = D.diaSemana(hoy);
+    const punto = h => new Date(hoy).setHours(h, 30, 0, 0), aire = 0.9 + D.hash('aforo' + dia) * 0.2;
+    return {
+      dentro: D.dentroEn(ahora, est).length, max: db.ajustes.max, estancia: est, ts: ahora,
+      hoy: Array.from({ length: 24 }, (_, h) => (punto(h) <= ahora ? D.dentroEn(punto(h), est).length : null)),
+      tipico: Array.from({ length: 24 }, (_, h) => Math.round((ritmo(dia, h) * 0.55 + ritmo(dia, h - 1) * 0.7) * aire * 10) / 10)
+    };
+  };
+  D.leerAforo = async () => { D.simular(); D.save(); return D.af; };
+  D.marcarSalida = async id => { D.db.salidas.push({ socioId: id, ts: Date.now() }); D.af = D.calcAforo(); D.save(); window.UI.render(); window.UI.toast('Salida registrada', 'ok'); return true; };
+  D.guardarAjustesAforo = async o => { D.db.ajustes = { max: o.max, estancia: o.estancia }; D.af = D.calcAforo(); D.save(); window.UI.render(); window.UI.toast('Ajustes de aforo guardados', 'ok'); return true; };
   D.prs = id => D.db.entrenos.filter(e => e.socioId === id && e.prs && e.prs.length).length;
 
   D.logros = s => {
